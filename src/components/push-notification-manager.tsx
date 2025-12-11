@@ -175,7 +175,8 @@ export function PushNotificationManager() {
     
     setIsLoading(true);
     try {
-      await sendNotification(message.trim());
+      // Pass subscription directly since serverless functions don't persist in-memory state
+      await sendNotification(message.trim(), subscription);
       setMessage("");
       setStatus("✅ Notification sent! Check your notifications.");
     } catch (error) {

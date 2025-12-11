@@ -41,21 +41,44 @@ export async function unsubscribeUser() {
   return { success: true };
 }
 
-export async function sendNotification(message: string) {
-  ensureVapid();
+export async function sendNotification(
+  message: string,
+  subscription?: SerializedSubscription
+) {
+  try {
+    ensureVapid();
 
-  if (!subscriptionStore) {
-    throw new Error("No subscription available");
+    // Use provided subscription or fall back to stored one
+    const sub = subscription || subscriptionStore;
+
+    if (!sub) {
+      throw new Error("No subscription available. Please subscribe first.");
+    }
+
+    const payload = JSON.stringify({
+      title: "PWA Demo",
+      body: message,
+      icon: "/android/android-launchericon-192-192.png",
+      badge: "/android/android-launchericon-72-72.png",
+    });
+
+    await webPush.sendNotification(sub, payload);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Send notification error:", error);
+
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes("expired") || error.message.includes("410")) {
+        throw new Error("Subscription expired. Please subscribe again.");
+      }
+      if (error.message.includes("404") || error.message.includes("410")) {
+        throw new Error("Subscription not found. Please subscribe again.");
+      }
+      throw new Error(`Failed to send notification: ${error.message}`);
+    }
+
+    throw new Error("Failed to send notification. Please try again.");
   }
-
-  const payload = JSON.stringify({
-    title: "PWA Demo",
-    body: message,
-    icon: "/android/android-launchericon-192-192.png",
-    badge: "/android/android-launchericon-72-72.png",
-  });
-
-  await webPush.sendNotification(subscriptionStore, payload);
-
-  return { success: true };
 }
