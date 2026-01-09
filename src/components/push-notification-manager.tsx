@@ -49,7 +49,7 @@ export function PushNotificationManager() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<SerializedSubscription | null>(null);
   const [message, setMessage] = useState("");
-  const [delayMinutes, setDelayMinutes] = useState<number>(0);
+  const [delaySeconds, setDelaySeconds] = useState<number>(0);
   const [permission, setPermission] = useState<NotificationPermission | "default">("default");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -181,11 +181,11 @@ export function PushNotificationManager() {
     try {
       const messageToSend = message.trim();
       
-      if (delayMinutes > 0) {
+      if (delaySeconds > 0) {
         // Schedule the notification on the server
         const result = await scheduleNotification(
           messageToSend,
-          delayMinutes,
+          delaySeconds,
           subscription
         );
         
@@ -194,7 +194,7 @@ export function PushNotificationManager() {
           const timeString = scheduledDate.toLocaleTimeString();
           setMessage("");
           setStatus(
-            `⏰ Notification scheduled for ${timeString} (in ${delayMinutes} minute${delayMinutes !== 1 ? 's' : ''}). It will be sent even if you close the app.`
+            `⏰ Notification scheduled for ${timeString} (in ${delaySeconds} second${delaySeconds !== 1 ? 's' : ''}). It will be sent even if you close the app.`
           );
         } else {
           setMessage("");
@@ -208,7 +208,7 @@ export function PushNotificationManager() {
       }
     } catch (error) {
       const err = error as Error;
-      setError(`Failed to ${delayMinutes > 0 ? 'schedule' : 'send'} notification: ${err.message || "Unknown error"}`);
+      setError(`Failed to ${delaySeconds > 0 ? 'schedule' : 'send'} notification: ${err.message || "Unknown error"}`);
       console.error("Send notification error:", error);
     } finally {
       setIsLoading(false);
@@ -255,7 +255,7 @@ export function PushNotificationManager() {
 
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
-          Schedule delay (minutes)
+          Schedule delay (seconds)
         </label>
         <input
           type="number"
@@ -263,11 +263,11 @@ export function PushNotificationManager() {
           step="1"
           className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"
           placeholder="0 = send immediately"
-          value={delayMinutes || ""}
-          onChange={(e) => setDelayMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+          value={delaySeconds || ""}
+          onChange={(e) => setDelaySeconds(Math.max(0, parseInt(e.target.value) || 0))}
         />
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Set to 0 to send immediately, or enter minutes to schedule
+          Set to 0 to send immediately, or enter seconds to schedule
         </p>
       </div>
 
@@ -298,10 +298,10 @@ export function PushNotificationManager() {
           disabled={!subscription || isLoading || !message.trim()}
         >
           {isLoading
-            ? delayMinutes > 0
+            ? delaySeconds > 0
               ? "Scheduling..."
               : "Sending..."
-            : delayMinutes > 0
+            : delaySeconds > 0
             ? "Schedule"
             : "Send Test"}
         </button>

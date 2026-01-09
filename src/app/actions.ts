@@ -97,7 +97,7 @@ export async function sendNotification(
 
 export async function scheduleNotification(
   message: string,
-  delayMinutes: number,
+  delaySeconds: number,
   subscription?: SerializedSubscription
 ) {
   try {
@@ -107,7 +107,7 @@ export async function scheduleNotification(
       throw new Error("No subscription available. Please subscribe first.");
     }
 
-    if (delayMinutes <= 0) {
+    if (delaySeconds <= 0) {
       // Send immediately
       return await sendNotification(message, sub);
     }
@@ -119,7 +119,7 @@ export async function scheduleNotification(
     }
 
     const notificationId = randomUUID();
-    const scheduledFor = Date.now() + delayMinutes * 60 * 1000;
+    const scheduledFor = Date.now() + delaySeconds * 1000;
 
     // Get the base URL for the callback
     // Hardcoded to production URL to avoid preview deployment URLs
@@ -129,7 +129,7 @@ export async function scheduleNotification(
 
     console.log(`Scheduling notification with QStash:`, {
       notificationId,
-      delayMinutes,
+      delaySeconds,
       callbackUrl,
       scheduledFor: new Date(scheduledFor).toISOString(),
     });
@@ -142,7 +142,7 @@ export async function scheduleNotification(
         message,
         subscription: sub,
       },
-      delay: delayMinutes * 60, // Delay in seconds
+      delay: delaySeconds, // Delay in seconds
     });
 
     console.log(`QStash message scheduled:`, {
