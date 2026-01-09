@@ -3,6 +3,7 @@
 import webPush from "web-push";
 import { Client } from "@upstash/qstash";
 import { randomUUID } from "crypto";
+import { buildNotification } from "@/lib/notification-helpers";
 
 type SerializedSubscription = {
   endpoint: string;
@@ -67,19 +68,10 @@ export async function sendNotification(
       throw new Error("No subscription available. Please subscribe first.");
     }
 
-    const payload = JSON.stringify({
-      title: "PWA Demo",
-      body: message,
-      icon: "/android/android-launchericon-192-192.png",
-      badge: "/android/android-launchericon-72-72.png",
-    });
+    const notification = buildNotification("PWA Demo", message);
+    const payload = JSON.stringify(notification);
 
-    // iOS Safari requires Urgency header
-    await webPush.sendNotification(sub, payload, {
-      headers: {
-        Urgency: "normal",
-      },
-    });
+    await webPush.sendNotification(sub, payload);
 
     return { success: true };
   } catch (error) {

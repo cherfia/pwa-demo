@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import webPush from "web-push";
+import { buildNotification } from "@/lib/notification-helpers";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -32,19 +33,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const payload = JSON.stringify({
-      title: "PWA Demo - Test",
-      body: message || "Test notification from API",
-      icon: "/android/android-launchericon-192-192.png",
-      badge: "/android/android-launchericon-72-72.png",
-    });
+    const notification = buildNotification(
+      "PWA Demo - Test",
+      message || "Test notification from API"
+    );
+    const payload = JSON.stringify(notification);
 
-    // iOS Safari requires Urgency header
-    await webPush.sendNotification(subscription, payload, {
-      headers: {
-        Urgency: "normal",
-      },
-    });
+    await webPush.sendNotification(subscription, payload);
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
 import webPush from "web-push";
+import { buildNotification } from "@/lib/notification-helpers";
 
 type SerializedSubscription = {
   endpoint: string;
@@ -82,12 +83,8 @@ async function handler(request: Request) {
       );
     }
 
-    const payload = JSON.stringify({
-      title: "PWA Demo",
-      body: message,
-      icon: "/android/android-launchericon-192-192.png",
-      badge: "/android/android-launchericon-72-72.png",
-    });
+    const notification = buildNotification("PWA Demo", message);
+    const payload = JSON.stringify(notification);
 
     console.log(
       `Sending push notification for scheduled notification ${notificationId}`
@@ -98,12 +95,7 @@ async function handler(request: Request) {
     });
 
     try {
-      // iOS Safari requires Urgency header
-      await webPush.sendNotification(subscription, payload, {
-        headers: {
-          Urgency: "normal",
-        },
-      });
+      await webPush.sendNotification(subscription, payload);
       console.log(`Successfully sent notification ${notificationId}`);
     } catch (pushError) {
       console.error("webPush.sendNotification error:", pushError);
