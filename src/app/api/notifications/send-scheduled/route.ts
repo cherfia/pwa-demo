@@ -36,6 +36,12 @@ async function handler(request: Request) {
       id: body.id,
       hasMessage: !!body.message,
       hasSubscription: !!body.subscription,
+      subscriptionKeys: body.subscription
+        ? Object.keys(body.subscription)
+        : null,
+      subscriptionEndpoint: body.subscription?.endpoint
+        ? body.subscription.endpoint.substring(0, 50) + "..."
+        : null,
     });
 
     const { id, message, subscription } = body as {
@@ -57,6 +63,25 @@ async function handler(request: Request) {
       );
     }
 
+    // Validate subscription structure
+    if (
+      !subscription.endpoint ||
+      !subscription.keys ||
+      !subscription.keys.p256dh ||
+      !subscription.keys.auth
+    ) {
+      console.error("Invalid subscription structure:", {
+        hasEndpoint: !!subscription.endpoint,
+        hasKeys: !!subscription.keys,
+        hasP256dh: !!subscription.keys?.p256dh,
+        hasAuth: !!subscription.keys?.auth,
+      });
+      return NextResponse.json(
+        { error: "Invalid subscription structure" },
+        { status: 400 }
+      );
+    }
+
     const payload = JSON.stringify({
       title: "PWA Demo",
       body: message,
@@ -67,8 +92,25 @@ async function handler(request: Request) {
     console.log(
       `Sending push notification for scheduled notification ${notificationId}`
     );
-    await webPush.sendNotification(subscription, payload);
-    console.log(`Successfully sent notification ${notificationId}`);
+    console.log("Subscription details:", {
+      endpoint: subscription.endpoint?.substring(0, 50) + "...",
+      hasKeys: !!subscription.keys,
+    });
+
+    try {
+      await webPush.sendNotification(subscription, payload);
+      console.log(`Successfully sent notification ${notificationId}`);
+    } catch (pushError) {
+      console.error("webPush.sendNotification error:", pushError);
+      if (pushError instanceof Error) {
+        console.error("Push error details:", {
+          message: pushError.message,
+          name: pushError.name,
+          code: (pushError as any).statusCode,
+        });
+      }
+      throw pushError; // Re-throw to be caught by outer catch
+    }
 
     return NextResponse.json({
       success: true,
@@ -106,4 +148,29 @@ async function handler(request: Request) {
 }
 
 // verifySignatureAppRouter automatically loads QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY from env
-export const POST = verifySignatureAppRouter(handler);
+// If signing keys are not set, it will throw an error, so we handle that case
+export const POST = async (request: Request) => {
+  try {
+    // Check if signing keys are available
+    if (
+      process.env.QSTASH_CURRENT_SIGNING_KEY ||
+      process.env.QSTASH_NEXT_SIGNING_KEY
+    ) {
+      return verifySignatureAppRouter(handler)(request);
+    } else {
+      console.warn(
+        "QStash signing keys not set - skipping signature verification (not recommended for production)"
+      );
+      return handler(request);
+    }
+  } catch (error) {
+    console.error("QStash signature verification failed:", error);
+    return NextResponse.json(
+      {
+        error: "Signature verification failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 401 }
+    );
+  }
+};

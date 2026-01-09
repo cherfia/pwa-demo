@@ -103,13 +103,36 @@ If notifications aren't being received:
    - "QStash callback received"
    - Any error messages
 
-4. **Verify the endpoint is accessible**: Test your endpoint manually:
+4. **Check QStash delivery status**: In [Upstash Console](https://console.upstash.com/) → QStash → Logs:
+   - Look for your message ID
+   - Check the "Status" column - should be "Delivered" (green) or show an error
+   - Click on a message to see the full request/response details
+   - Check the HTTP status code returned by your endpoint
+
+5. **Verify the endpoint is accessible**: Test your endpoint manually:
 
    ```bash
    curl https://your-domain.com/api/notifications/send-scheduled
    ```
 
-5. **Check Vercel function logs**: If deployed on Vercel, check the function logs in the Vercel dashboard.
+6. **Test push notifications directly**: Use the test endpoint to verify your subscription works:
+
+   ```bash
+   curl -X POST https://your-domain.com/api/notifications/test \
+     -H "Content-Type: application/json" \
+     -d '{"subscription": {...your subscription...}, "message": "Test"}'
+   ```
+
+7. **Check Vercel function logs**: If deployed on Vercel, check the function logs in the Vercel dashboard for:
+   - "QStash callback received"
+   - "Sending push notification"
+   - Any error messages
+
+8. **Common issues**:
+   - **Signature verification failing**: Make sure `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` are set correctly
+   - **Subscription expired**: The subscription might have expired between scheduling and delivery
+   - **Invalid subscription format**: Check that the subscription object structure is correct when passed to QStash
+   - **Endpoint returning 500**: Check server logs for the actual error
 
 ## Deploy on Vercel
 
