@@ -6,11 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "process-notifications": "tsx src/scripts/process-notifications.ts"
+    "lint": "eslint"
   },
   "dependencies": {
     "@tcgdex/sdk": "^2.7.1",
+    "@upstash/qstash": "^2.8.4",
     "next": "16.0.10",
     "react": "19.2.1",
     "react-dom": "19.2.1",

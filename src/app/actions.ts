@@ -1,10 +1,7 @@
 "use server";
 
 import webPush from "web-push";
-import {
-  addScheduledNotification,
-  type ScheduledNotification,
-} from "@/lib/notification-storage";
+import { Client } from "@upstash/qstash";
 import { randomUUID } from "crypto";
 
 type SerializedSubscription = {
@@ -20,9 +17,19 @@ const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_CONTACT =
   process.env.VAPID_CONTACT_EMAIL ?? "mailto:admin@pwa-demo.local";
+const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
+const QSTASH_CURRENT_SIGNING_KEY = process.env.QSTASH_CURRENT_SIGNING_KEY;
+const QSTASH_NEXT_SIGNING_KEY = process.env.QSTASH_NEXT_SIGNING_KEY;
 
 let subscriptionStore: SerializedSubscription | null = null;
 let vapidConfigured = false;
+
+// Initialize QStash client (only if token is provided)
+const qstashClient = QSTASH_TOKEN
+  ? new Client({
+      token: QSTASH_TOKEN,
+    })
+  : null;
 
 function ensureVapid() {
   if (vapidConfigured) return;
@@ -105,21 +112,37 @@ export async function scheduleNotification(
       return await sendNotification(message, sub);
     }
 
-    const scheduledFor = Date.now() + delayMinutes * 60 * 1000;
-    const scheduledNotification: ScheduledNotification = {
-      id: randomUUID(),
-      message,
-      subscription: sub,
-      scheduledFor,
-      createdAt: Date.now(),
-    };
+    if (!qstashClient) {
+      throw new Error(
+        "QStash is not configured. Please set QSTASH_TOKEN environment variable."
+      );
+    }
 
-    await addScheduledNotification(scheduledNotification);
+    const notificationId = randomUUID();
+    const scheduledFor = Date.now() + delayMinutes * 60 * 1000;
+
+    // Get the base URL for the callback
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000");
+
+    // Schedule the notification with QStash
+    await qstashClient.publishJSON({
+      url: `${baseUrl}/api/notifications/send-scheduled`,
+      body: {
+        id: notificationId,
+        message,
+        subscription: sub,
+      },
+      delay: delayMinutes * 60, // Delay in seconds
+    });
 
     return {
       success: true,
       scheduledFor,
-      id: scheduledNotification.id,
+      id: notificationId,
     };
   } catch (error) {
     console.error("Schedule notification error:", error);
